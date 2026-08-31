@@ -6,9 +6,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SupportCreator
+namespace Common.R22_24
 {
-    internal class ElementFinder
+    public class ElementFinder
     {
         private readonly Document _doc;
 

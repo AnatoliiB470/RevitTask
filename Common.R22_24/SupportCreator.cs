@@ -1,11 +1,10 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
-using Autodesk.Revit.UI;
 using System;
 
-namespace SupportCreator
+namespace Common.R22_24
 {
-    internal class SupportCreator
+    public class SupportCreator
     {
         private readonly Document _doc;
 
@@ -15,23 +14,17 @@ namespace SupportCreator
         {
             ValidatePlacementInputs(supportSymbol, level);
 
-            using (Transaction trans = new Transaction(_doc, "Create Support"))
-            {
-                trans.Start();
+            EnsureSymbolIsActive(supportSymbol);
 
-                EnsureSymbolIsActive(supportSymbol);
+            FamilyInstance supportInstance = _doc.Create.NewFamilyInstance(
+                locationFeet,
+                supportSymbol,
+                hostElement,
+                level,
+                StructuralType.NonStructural
+            );
 
-                FamilyInstance supportInstance = _doc.Create.NewFamilyInstance(
-                    locationFeet,
-                    supportSymbol,
-                    hostElement,
-                    level,
-                    StructuralType.NonStructural
-                );
-
-                trans.Commit();
-                return supportInstance;
-            }
+            return supportInstance;
         }
 
         private void EnsureSymbolIsActive(FamilySymbol symbol)

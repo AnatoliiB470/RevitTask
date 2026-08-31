@@ -2,11 +2,9 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Electrical;
 using Autodesk.Revit.UI;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using Common.R22_24;
 
-namespace SupportCreator
+namespace CreateSupportCommand.R22_24
 {
     [Transaction(TransactionMode.Manual)]
     internal class CreateSupportCommand : IExternalCommand
@@ -30,7 +28,16 @@ namespace SupportCreator
                 Level level = finder.GetActiveLevel(DEFAULT_LEVEL_NAME);
 
                 SupportCreator placementService = new SupportCreator(doc);
-                FamilyInstance createdSupport = placementService.CreateSupport(symbol, TargetPoint, host, level);
+                FamilyInstance createdSupport = null;
+
+                using (Transaction trans = new Transaction(doc, "Create Supports Bulk"))
+                {
+                    trans.Start();
+
+                    createdSupport = placementService.CreateSupport(symbol, TargetPoint, host, level);
+
+                    trans.Commit();
+                }
 
                 return createdSupport != null ? Result.Succeeded : Result.Failed;
             }

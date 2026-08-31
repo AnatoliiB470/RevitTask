@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{4EC044A2-D350-4F3A-80E7-093A1C548D65}</ProjectGuid>
+    <ProjectGuid>{24AF761D-A8A0-4BCB-B1D5-600FEE8C38D5}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>CreateSupportCommand.R22_24</RootNamespace>
-    <AssemblyName>SupportCreator.R22_24</AssemblyName>
+    <RootNamespace>Common.R22_24</RootNamespace>
+    <AssemblyName>Common.R22_24</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -49,14 +49,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CreateSupportCommand.cs" />
+    <Compile Include="ElementFinder.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Common.R22_24\Common.R22_24.csproj">
-      <Project>{24af761d-a8a0-4bcb-b1d5-600fee8c38d5}</Project>
-      <Name>Common.R22_24</Name>
-    </ProjectReference>
+    <Compile Include="SupportCreator.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

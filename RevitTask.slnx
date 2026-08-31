@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="Common.R22_24/Common.R22_24.csproj" Id="24af761d-a8a0-4bcb-b1d5-600fee8c38d5" />
+  <Project Path="ExtendedSuportCreator.R22_24/ExtendedSuportCreator.R22_24.csproj" Id="bac56acb-8766-45f3-a64c-24084cf4d815" />
   <Project Path="Pop_Up.R22_24/Pop_Up.R22_24.csproj" Id="b7825eda-ea80-4597-5dfc-35b5c6d59ba3" />
   <Project Path="Pop_Up.R25_26/Pop_Up.R25_26.csproj" Id="0eff2344-5fe3-4dea-9302-4b1780497a20" />
   <Project Path="SupportCreator.R22_24/SupportCreator.R22_24.csproj" Id="4ec044a2-d350-4f3a-80e7-093a1c548d65" />

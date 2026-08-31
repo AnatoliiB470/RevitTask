@@ -1,5 +1,4 @@
 <Solution>
   <Project Path="Pop_Up.R22_24/Pop_Up.R22_24.csproj" Id="b7825eda-ea80-4597-5dfc-35b5c6d59ba3" />
-  <Project Path="Pop_Up.R25/Pop_Up.R25.csproj" />
-  <Project Path="Pop_Up.R26/Pop_Up.R26.csproj" />
+  <Project Path="Pop_Up.R25_26/Pop_Up.R25_26.csproj" Id="0eff2344-5fe3-4dea-9302-4b1780497a20" />
 </Solution>

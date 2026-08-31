@@ -22,12 +22,18 @@ namespace ExtendedSuportCreator.R22_24
             try
             {
                 ElementFinder finder = new ElementFinder(uiDoc);
-
                 List<Conduit> conduits = finder.GetSelectedConduits();
 
                 if (conduits.Count == 0)
-                {
                     return Result.Cancelled;
+
+                List<Curve> curves = finder.GetCurves(conduits);
+                XYZ placementPoint = SupportPlacementCalculator.GetCommonPlacementPoint(curves, offsetInFeet: 1.0);
+
+                if (placementPoint == null)
+                {
+                    message = "Selected conduits do not have a common overlap range.";
+                    return Result.Failed;
                 }
 
                 FamilySymbol symbol = finder.GetSupportSymbol(SUPPORT_FAMILY_NAME);
@@ -39,15 +45,7 @@ namespace ExtendedSuportCreator.R22_24
                 {
                     trans.Start();
 
-                    foreach (Conduit conduit in conduits)
-                    {
-                        if (conduit.Location is LocationCurve locCurve)
-                        {
-                            XYZ placementPoint = SupportPlacementCalculator.CalculatePointFromStart(locCurve.Curve);
-
-                            placementService.CreateSupport(symbol, placementPoint, conduit, level);
-                        }
-                    }
+                    placementService.CreateSupport(symbol, placementPoint, conduits[0], level);
 
                     trans.Commit();
                 }

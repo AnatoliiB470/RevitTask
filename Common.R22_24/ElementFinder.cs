@@ -93,9 +93,12 @@ namespace Common.R22_24
             return selectedConduits;
         }
 
-        public Level GetActiveLevel(object dEFAULT_LEVEL_NAME)
+        public List<Curve> GetCurves(IEnumerable<Conduit> conduits)
         {
-            throw new NotImplementedException();
+            return conduits
+                .Select(c => (c.Location as LocationCurve)?.Curve)
+                .Where(c => c != null)
+                .ToList();
         }
     }
 }

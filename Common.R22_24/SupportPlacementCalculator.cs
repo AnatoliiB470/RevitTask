@@ -67,31 +67,6 @@ namespace Common.R22_24
             return new XYZ(worldStart.X, worldStart.Y, minZ);
         }
 
-        public static BoundingBoxXYZ GetPackBoundingBox(List<Element> elements)
-        {
-            var boxes = elements.Select(e => e.get_BoundingBox(null)).Where(b => b != null).ToList();
-
-            return new BoundingBoxXYZ
-            {
-                Min = new XYZ(boxes.Min(b => b.Min.X), boxes.Min(b => b.Min.Y), boxes.Min(b => b.Min.Z)),
-                Max = new XYZ(boxes.Max(b => b.Max.X), boxes.Max(b => b.Max.Y), boxes.Max(b => b.Max.Z))
-            };
-        }
-
-        public static XYZ GetDefaultPlacementPoint(BoundingBoxXYZ packBox) => new XYZ(
-            (packBox.Min.X + packBox.Max.X) * 0.5,
-            (packBox.Min.Y + packBox.Max.Y) * 0.5,
-            packBox.Min.Z);
-
-        public static XYZ GetCenterPoint(Line line, BoundingBoxXYZ packBox, XYZ dir)
-        {
-            XYZ lineMid = (line.GetEndPoint(0) + line.GetEndPoint(1)) * 0.5;
-
-            return Math.Abs(dir.X) > 0.5
-                ? new XYZ(lineMid.X, (packBox.Min.Y + packBox.Max.Y) * 0.5, packBox.Min.Z)
-                : new XYZ((packBox.Min.X + packBox.Max.X) * 0.5, lineMid.Y, packBox.Min.Z);
-        }
-
         public static XYZ GetPathDirection(Element element)
         {
             if ((element.Location as LocationCurve)?.Curve is Curve curve)

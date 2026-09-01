@@ -3,6 +3,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Electrical;
 using Autodesk.Revit.UI;
 using Common.R22_24;
+using System.Collections.Generic;
 
 namespace CreateSupportCommand.R22_24
 {
@@ -12,8 +13,6 @@ namespace CreateSupportCommand.R22_24
         private const string SUPPORT_FAMILY_NAME = "TRAPEZE 1 TIER";
         private const string DEFAULT_LEVEL_NAME = "Level 1";
         private const int CONDUIT_ID = 126160;
-
-        private static readonly XYZ TargetPoint = new XYZ(35.0, -113.3, 11.28);
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -34,7 +33,7 @@ namespace CreateSupportCommand.R22_24
                 {
                     trans.Start();
 
-                    createdSupport = placementService.CreateSupport(symbol, TargetPoint, host, level);
+                    createdSupport = placementService.CreateSupport(symbol, new List<Element> { host }, level, rodOffsetInFeet: 1.0);
 
                     trans.Commit();
                 }

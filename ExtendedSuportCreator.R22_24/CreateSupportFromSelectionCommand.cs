@@ -5,6 +5,7 @@ using Autodesk.Revit.UI;
 using Common.R22_24;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ExtendedSuportCreator.R22_24
 {
@@ -27,15 +28,6 @@ namespace ExtendedSuportCreator.R22_24
                 if (conduits.Count == 0)
                     return Result.Cancelled;
 
-                List<Curve> curves = finder.GetCurves(conduits);
-                XYZ placementPoint = SupportPlacementCalculator.GetCommonPlacementPoint(curves, offsetInFeet: 1.0);
-
-                if (placementPoint == null)
-                {
-                    message = "Selected conduits do not have a common overlap range.";
-                    return Result.Failed;
-                }
-
                 FamilySymbol symbol = finder.GetSupportSymbol(SUPPORT_FAMILY_NAME);
                 Level level = finder.GetActiveLevel(DEFAULT_LEVEL_NAME);
 
@@ -45,7 +37,9 @@ namespace ExtendedSuportCreator.R22_24
                 {
                     trans.Start();
 
-                    placementService.CreateSupport(symbol, placementPoint, conduits[0], level);
+                    List<Element> elementList = conduits.Cast<Element>().ToList();
+
+                    placementService.CreateSupportsAlongPath(symbol, elementList, level);
 
                     trans.Commit();
                 }

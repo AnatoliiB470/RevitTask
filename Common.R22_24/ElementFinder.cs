@@ -93,7 +93,7 @@ namespace Common.R22_24
             return selectedConduits;
         }
 
-        public List<Curve> GetCurves(IEnumerable<Conduit> conduits)
+        public List<Curve> GetCurves(IEnumerable<Element> conduits)
         {
             return conduits
                 .Select(c => (c.Location as LocationCurve)?.Curve)

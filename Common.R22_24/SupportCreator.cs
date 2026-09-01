@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB.Electrical;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
+using Common.R22_24.Validators;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,11 +35,21 @@ namespace Common.R22_24
             if (elements == null || !elements.Any()) return new List<FamilyInstance>();
 
             List<Curve> curves = _elementFinder.GetCurves(elements);
+
             if (!curves.Any()) throw new ArgumentException("No valid curves found.");
+
+            if (!ConduitValidator.Validate(elements, curves))
+                return new List<FamilyInstance>();
 
             XYZ zoneStartPoint = SupportPlacementCalculator.GetWorkZoneStart(curves, out double perpWidth, out double alongLength);
 
             if (zoneStartPoint == null) return new List<FamilyInstance>();
+
+            if (alongLength < 2.0)
+            {
+                TaskDialog.Show("Support Creation", "The selected conduit path is too short. The work zone length must be at least 2 feet.");
+                return new List<FamilyInstance>();
+            }
 
             if (alongLength <= (minEdgeOffsetInFeet * 2)) return new List<FamilyInstance>();
 
@@ -47,16 +58,13 @@ namespace Common.R22_24
 
             var supports = new List<FamilyInstance>();
 
-            double currentDist = minEdgeOffsetInFeet;
-            double endLimit = alongLength - minEdgeOffsetInFeet;
+            double startDist = minEdgeOffsetInFeet;
+            double endDist = alongLength - minEdgeOffsetInFeet;
 
-            while (currentDist <= endLimit)
+            for (double currentDist = startDist; currentDist <= endDist; currentDist += stepInFeet)
             {
                 XYZ placementPoint = zoneStartPoint + (dir * currentDist);
-
                 supports.Add(CreateSupportAt(supportSymbol, elements, perpWidth, level, rodOffsetInFeet, placementPoint));
-
-                currentDist += stepInFeet;
             }
 
             return supports;

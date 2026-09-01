@@ -1,10 +1,6 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Electrical;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Common.R22_24
 {
@@ -19,7 +15,7 @@ namespace Common.R22_24
             return curve.Evaluate(distance, false);
         }
 
-        public static XYZ GetWorkZoneStart(List<Curve> curves, out double perpWidth, out double alongLength)
+        public static XYZ GetWorkZoneStart(List<Curve> curves, double conduitRadius, out double perpWidth, out double alongLength)
         {
             if (curves == null || curves.Count == 0)
             {
@@ -40,8 +36,10 @@ namespace Common.R22_24
             toWorld.BasisZ = XYZ.BasisZ;
             Transform toLocal = toWorld.Inverse;
 
-            double maxStart = double.MinValue, minEnd = double.MaxValue;
-            double minPerp = double.MaxValue, maxPerp = double.MinValue;
+            double maxStart = double.MinValue;
+            double minEnd = double.MaxValue;
+            double minPerp = double.MaxValue;
+            double maxPerp = double.MinValue;
             double minZ = double.MaxValue;
 
             foreach (Curve curve in curves)
@@ -63,8 +61,9 @@ namespace Common.R22_24
 
             XYZ localStart = new XYZ(maxStart, (minPerp + maxPerp) * 0.5, 0);
             XYZ worldStart = toWorld.OfPoint(localStart);
+            double bottomZ = minZ - conduitRadius;
 
-            return new XYZ(worldStart.X, worldStart.Y, minZ);
+            return new XYZ(worldStart.X, worldStart.Y, bottomZ);
         }
 
         public static XYZ GetPathDirection(Element element)

@@ -42,7 +42,7 @@ namespace Common.R22_24
             if (!ConduitValidator.Validate(elements, curves))
                 return new List<FamilyInstance>();
 
-            XYZ zoneStartPoint = SupportPlacementCalculator.GetWorkZoneStart(curves, out double perpWidth, out double alongLength);
+            XYZ zoneStartPoint = SupportPlacementCalculator.GetWorkZoneStart(curves, GetFirstConduitRadius(elements), out double perpWidth, out double alongLength);
 
             if (zoneStartPoint == null) return new List<FamilyInstance>();
 
@@ -107,6 +107,7 @@ namespace Common.R22_24
             FamilyInstance supportInstance = _doc.Create.NewFamilyInstance(
                 placementPoint, supportSymbol, null, level, StructuralType.NonStructural);
 
+            SetZValue(supportInstance, placementPoint.Z);
 
             if (elements != null && elements.Count > 0)
             {
@@ -132,6 +133,23 @@ namespace Common.R22_24
         private void SetWidth(FamilyInstance support, double perpWidth, double rodOffsetInFeet)
         {
             support.LookupParameter("LENGTH")?.Set(perpWidth + (2 * rodOffsetInFeet));
+        }
+
+        private void SetZValue(FamilyInstance support, double value)
+        {
+            support.LookupParameter("TOS-TIER1")?.Set(value);
+        }
+
+        private double GetFirstConduitRadius(List<Element> elements)
+        {
+            Element firstElement = elements.First();
+
+            Parameter diamParam = firstElement.get_Parameter(BuiltInParameter.RBS_CONDUIT_DIAMETER_PARAM);
+
+            if (diamParam != null && diamParam.HasValue)
+                return diamParam.AsDouble() * 0.5; 
+
+            return 0.0;
         }
 
         private void RotatePerpendicular(FamilyInstance instance, XYZ point, Element hostElement)

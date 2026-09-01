@@ -114,6 +114,22 @@ namespace Common.R22_24
             FamilyInstance supportInstance = _doc.Create.NewFamilyInstance(
                 placementPoint, supportSymbol, null, level, StructuralType.NonStructural);
 
+
+            if (elements != null && elements.Count > 0)
+            {
+                Parameter conduitCommentParam = elements[0].get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS);
+
+                if (conduitCommentParam != null && conduitCommentParam.HasValue)
+                {
+                    string commentValue = conduitCommentParam.AsString();
+
+                    Parameter supportCommentParam = supportInstance.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS);
+
+                    if (supportCommentParam != null && !supportCommentParam.IsReadOnly)
+                        supportCommentParam.Set(commentValue);
+                }
+            }
+
             RotatePerpendicular(supportInstance, placementPoint, hostElement);
             SetWidth(supportInstance, perpWidth, rodOffsetInFeet);
 

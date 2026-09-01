@@ -13,6 +13,7 @@ namespace Common.R22_24
     public class SupportCreator
     {
         private const double DEFAULT_ROD_OFFSET_IN_FEET = 0.4;
+        private const double MIN_WORK_ZONE_LENGTH_IN_FEET = 2.0;
 
         private readonly Document _doc;
         private readonly ElementFinder _elementFinder;
@@ -45,7 +46,7 @@ namespace Common.R22_24
 
             if (zoneStartPoint == null) return new List<FamilyInstance>();
 
-            if (alongLength < 2.0)
+            if (alongLength < MIN_WORK_ZONE_LENGTH_IN_FEET)
             {
                 TaskDialog.Show("Support Creation", "The selected conduit path is too short. The work zone length must be at least 2 feet.");
                 return new List<FamilyInstance>();
@@ -92,14 +93,6 @@ namespace Common.R22_24
             XYZ placementPoint = customPoint ?? centerPoint;
 
             return CreateSupportAt(supportSymbol, elements, perpWidth, level, rodOffsetInFeet, placementPoint);
-        }
-
-        private void CreateAtOffset(
-            FamilySymbol supportSymbol, List<Element> elements, double perpWidth, Level level,
-            double rodOffsetInFeet, XYZ centerPoint, XYZ dir, double d, List<FamilyInstance> supports)
-        {
-            XYZ pointAtStep = centerPoint + (dir * d);
-            supports.Add(CreateSupportAt(supportSymbol, elements, perpWidth, level, rodOffsetInFeet, pointAtStep));
         }
 
         private FamilyInstance CreateSupportAt(

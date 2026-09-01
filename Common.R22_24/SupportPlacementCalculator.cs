@@ -19,38 +19,52 @@ namespace Common.R22_24
             return curve.Evaluate(distance, false);
         }
 
-        public static XYZ GetCommonPlacementPoint(List<Curve> curves, double offsetInFeet = 1.0)
+        public static XYZ GetWorkZoneStart(List<Curve> curves, out double perpWidth, out double alongLength)
         {
-            if (curves == null || curves.Count == 0) return null;
+            if (curves == null || curves.Count == 0)
+            {
+                perpWidth = 0;
+                alongLength = 0;
+                return null;
+            }
 
             Curve baseCurve = curves[0];
             XYZ startPoint = baseCurve.GetEndPoint(0);
-
-            double maxStart = 0.0;
-            double minEnd = baseCurve.Length;
-
             XYZ dir = (baseCurve.GetEndPoint(1) - startPoint).Normalize();
+            XYZ perp = new XYZ(-dir.Y, dir.X, 0);
+
+            Transform toWorld = Transform.Identity;
+            toWorld.Origin = startPoint;
+            toWorld.BasisX = dir;
+            toWorld.BasisY = perp;
+            toWorld.BasisZ = XYZ.BasisZ;
+            Transform toLocal = toWorld.Inverse;
+
+            double maxStart = double.MinValue, minEnd = double.MaxValue;
+            double minPerp = double.MaxValue, maxPerp = double.MinValue;
+            double minZ = double.MaxValue;
 
             foreach (Curve curve in curves)
             {
-                double p0 = (curve.GetEndPoint(0) - startPoint).DotProduct(dir);
-                double p1 = (curve.GetEndPoint(1) - startPoint).DotProduct(dir);
+                XYZ l0 = toLocal.OfPoint(curve.GetEndPoint(0));
+                XYZ l1 = toLocal.OfPoint(curve.GetEndPoint(1));
 
-                double start = Math.Min(p0, p1);
-                double end = Math.Max(p0, p1);
-
-                if (start > maxStart) maxStart = start;
-                if (end < minEnd) minEnd = end;
+                maxStart = Math.Max(maxStart, Math.Min(l0.X, l1.X));
+                minEnd = Math.Min(minEnd, Math.Max(l0.X, l1.X));
+                minPerp = Math.Min(minPerp, Math.Min(l0.Y, l1.Y));
+                maxPerp = Math.Max(maxPerp, Math.Max(l0.Y, l1.Y));
+                minZ = Math.Min(minZ, Math.Min(curve.GetEndPoint(0).Z, curve.GetEndPoint(1).Z));
             }
+
+            perpWidth = maxPerp - minPerp;
+            alongLength = minEnd - maxStart;
 
             if (maxStart >= minEnd) return null;
 
-            double targetDistance = maxStart + offsetInFeet;
+            XYZ localStart = new XYZ(maxStart, (minPerp + maxPerp) * 0.5, 0);
+            XYZ worldStart = toWorld.OfPoint(localStart);
 
-            if (targetDistance > minEnd)
-                targetDistance = (maxStart + minEnd) / 2.0;
-
-            return baseCurve.Evaluate(targetDistance, false);
+            return new XYZ(worldStart.X, worldStart.Y, minZ);
         }
 
         public static BoundingBoxXYZ GetPackBoundingBox(List<Element> elements)

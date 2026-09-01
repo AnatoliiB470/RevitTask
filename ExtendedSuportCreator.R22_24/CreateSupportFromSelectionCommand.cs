@@ -6,6 +6,7 @@ using Common.R22_24;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows;
 
 namespace ExtendedSuportCreator.R22_24
 {
@@ -31,6 +32,25 @@ namespace ExtendedSuportCreator.R22_24
                 FamilySymbol symbol = finder.GetSupportSymbol(SUPPORT_FAMILY_NAME);
                 Level level = finder.GetActiveLevel(DEFAULT_LEVEL_NAME);
 
+                var settingsControl = new SupportSettingsControl();
+
+                var settingsWindow = new Window
+                {
+                    Title = "Support Settings",
+                    Content = settingsControl,
+                    SizeToContent = SizeToContent.WidthAndHeight,
+                    WindowStartupLocation = WindowStartupLocation.CenterScreen,
+                    ResizeMode = ResizeMode.NoResize
+                };
+
+                bool? dialogResult = settingsWindow.ShowDialog();
+                if (dialogResult != true)
+                    return Result.Cancelled;
+
+                double stepInFeet = settingsControl.StepInFeet;
+                double minOffsetFeet = UnitUtils.ConvertToInternalUnits(settingsControl.MinOffset, UnitTypeId.Inches);
+                double maxOffsetFeet = UnitUtils.ConvertToInternalUnits(settingsControl.MaxOffset, UnitTypeId.Inches);
+
                 SupportCreator placementService = new SupportCreator(doc);
 
                 using (Transaction trans = new Transaction(doc, "Create Supports Bulk"))
@@ -39,7 +59,7 @@ namespace ExtendedSuportCreator.R22_24
 
                     List<Element> elementList = conduits.Cast<Element>().ToList();
 
-                    placementService.CreateSupportsAlongPath(symbol, elementList, level);
+                    placementService.CreateSupportsAlongPath(symbol, elementList, level, stepInFeet, minOffsetFeet, maxOffsetFeet);
 
                     trans.Commit();
                 }

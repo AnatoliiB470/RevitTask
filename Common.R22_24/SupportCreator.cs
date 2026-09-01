@@ -1,9 +1,11 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Electrical;
 using Autodesk.Revit.DB.Structure;
+using Autodesk.Revit.UI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Common.R22_24
 {
@@ -24,7 +26,9 @@ namespace Common.R22_24
             FamilySymbol supportSymbol,
             List<Element> elements,
             Level level,
-            double stepInFeet = 1.0,
+            double stepInFeet,
+            double minEdgeOffsetInFeet,
+            double maxEdgeOffsetInFeet,
             double rodOffsetInFeet = DEFAULT_ROD_OFFSET_IN_FEET)
         {
             if (elements == null || !elements.Any()) return new List<FamilyInstance>();
@@ -32,22 +36,27 @@ namespace Common.R22_24
             List<Curve> curves = _elementFinder.GetCurves(elements);
             if (!curves.Any()) throw new ArgumentException("No valid curves found.");
 
-            XYZ centerPoint = SupportPlacementCalculator.GetWorkZoneCenter(curves, out double perpWidth, out double alongLength);
-            if (centerPoint == null) return new List<FamilyInstance>();
+            XYZ zoneStartPoint = SupportPlacementCalculator.GetWorkZoneStart(curves, out double perpWidth, out double alongLength);
 
-            Line baseLine = curves[0] as Line
-                ?? throw new ArgumentException("Reference element must be a line.");
-            XYZ dir = (baseLine.GetEndPoint(1) - baseLine.GetEndPoint(0)).Normalize();
+            if (zoneStartPoint == null) return new List<FamilyInstance>();
 
-            double halfLength = alongLength * 0.5;
+            if (alongLength <= (minEdgeOffsetInFeet * 2)) return new List<FamilyInstance>();
+
+            Curve baseCurve = curves[0];
+            XYZ dir = (baseCurve.GetEndPoint(1) - baseCurve.GetEndPoint(0)).Normalize();
+
             var supports = new List<FamilyInstance>();
 
-            for (double d = 0; d <= halfLength; d += stepInFeet)
-            {
-                CreateAtOffset(supportSymbol, elements, perpWidth, level, rodOffsetInFeet, centerPoint, dir, d, supports);
+            double currentDist = minEdgeOffsetInFeet;
+            double endLimit = alongLength - minEdgeOffsetInFeet;
 
-                if (d > 0)
-                    CreateAtOffset(supportSymbol, elements, perpWidth, level, rodOffsetInFeet, centerPoint, dir, -d, supports);
+            while (currentDist <= endLimit)
+            {
+                XYZ placementPoint = zoneStartPoint + (dir * currentDist);
+
+                supports.Add(CreateSupportAt(supportSymbol, elements, perpWidth, level, rodOffsetInFeet, placementPoint));
+
+                currentDist += stepInFeet;
             }
 
             return supports;

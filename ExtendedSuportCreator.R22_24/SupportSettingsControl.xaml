@@ -1,0 +1,23 @@
+﻿<UserControl x:Class="ExtendedSuportCreator.R22_24.SupportSettingsControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="LightGray"
+             Width="300">
+    <StackPanel Margin="10">
+        <TextBlock Text="Step between supports (ft):"/>
+        <TextBox x:Name="StepTextBox" Text="1.0" Margin="0,0,0,10"/>
+
+        <TextBlock Text="Min offset from edge (in):"/>
+        <TextBox x:Name="MinOffsetTextBox" Text="6" Margin="0,0,0,10"/>
+
+        <TextBlock Text="Max offset from edge (in):"/>
+        <TextBox x:Name="MaxOffsetTextBox" Text="8" Margin="0,0,0,10"/>
+
+        <TextBlock x:Name="ErrorText" Foreground="Red" TextWrapping="Wrap" Visibility="Collapsed" Margin="0,0,0,10"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="OK" Width="70" Click="OnOkClick" Margin="0,0,5,0"/>
+            <Button Content="Cancel" Width="70" Click="OnCancelClick"/>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

@@ -44,7 +44,8 @@ namespace Common.R22_24
             if (!ConduitValidator.Validate(elements, curves))
                 return new List<FamilyInstance>();
 
-            XYZ zoneStartPoint = SupportPlacementCalculator.GetWorkZoneStart(curves, GetFirstConduitRadius(elements), out double perpWidth, out double alongLength);
+            XYZ zoneStartPoint = SupportPlacementCalculator.
+                GetWorkZoneStart(curves, GetFirstConduitRadius(elements), out double perpWidth, out double alongLength);
 
             if (zoneStartPoint == null) return new List<FamilyInstance>();
 
@@ -54,16 +55,26 @@ namespace Common.R22_24
                 return new List<FamilyInstance>();
             }
 
+            List<double> placementDistances;
+
+            try
+            {
+                placementDistances = SupportPlacementCalculator.
+                    CalculateSymmetricPlacementDistances(alongLength, stepInFeet, minEdgeOffsetInFeet, maxEdgeOffsetInFeet);
+            }
+            catch (InvalidOperationException ex)
+            {
+                TaskDialog.Show("Support Placement Error", ex.Message);
+                return new List<FamilyInstance>();
+            }
+
             XYZ dir = SupportPlacementCalculator.GetPathDirection(elements[0]);
 
             var supports = new List<FamilyInstance>();
 
-            double startDist = minEdgeOffsetInFeet;
-            double endDist = alongLength - minEdgeOffsetInFeet;
-
-            for (double currentDist = startDist; currentDist <= endDist; currentDist += stepInFeet)
+            foreach (double dist in placementDistances)
             {
-                XYZ placementPoint = zoneStartPoint + (dir * currentDist);
+                XYZ placementPoint = zoneStartPoint + (dir * dist);
                 supports.Add(CreateSupportAt(supportSymbol, elements, perpWidth, level, rodOffsetInFeet, placementPoint));
             }
 
@@ -120,7 +131,7 @@ namespace Common.R22_24
 
             double conduitRadius = GetFirstConduitRadius(elements);
 
-            List<PackSegment> packSegments = SupportPlacementCalculator.BuildPackSegments(curves, conduitRadius, 
+            List<PackSegment> packSegments = SupportPlacementCalculator.BuildPackSegments(curves, conduitRadius,
                 _doc.Application.ShortCurveTolerance, out XYZ zoneStartPoint, out XYZ dir);
 
             if (!packSegments.Any()) return new List<FamilyInstance>();
@@ -133,6 +144,18 @@ namespace Common.R22_24
                 return new List<FamilyInstance>();
             }
 
+            List<double> placementDistances;
+            try
+            {
+                placementDistances = SupportPlacementCalculator.CalculateSymmetricPlacementDistances(
+                    totalLength, stepInFeet, minEdgeOffsetInFeet, maxEdgeOffsetInFeet);
+            }
+            catch (InvalidOperationException ex)
+            {
+                TaskDialog.Show("Support Placement Error", ex.Message);
+                return new List<FamilyInstance>();
+            }
+
             XYZ perpDir = new XYZ(-dir.Y, dir.X, 0).Normalize();
 
             double startDist = minEdgeOffsetInFeet;
@@ -142,7 +165,7 @@ namespace Common.R22_24
             var supports = new List<FamilyInstance>();
             var currentSegmentEndDistance = packSegments[0].Length;
 
-            for (double currentDist = startDist; currentDist <= endDist; currentDist += stepInFeet)
+            foreach (double currentDist in placementDistances)
             {
                 while (segmentIndex < packSegments.Count - 1 && currentDist > currentSegmentEndDistance)
                 {
@@ -205,7 +228,7 @@ namespace Common.R22_24
             Parameter diamParam = firstElement.get_Parameter(BuiltInParameter.RBS_CONDUIT_DIAMETER_PARAM);
 
             if (diamParam != null && diamParam.HasValue)
-                return diamParam.AsDouble() * 0.5; 
+                return diamParam.AsDouble() * 0.5;
 
             return 0.0;
         }

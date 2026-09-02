@@ -114,6 +114,45 @@ namespace Common.R22_24
             return segments;
         }
 
+        public static List<double> CalculateSymmetricPlacementDistances(double totalLength, double stepInFeet,
+            double minEdgeOffsetInFeet,
+            double maxEdgeOffsetInFeet)
+        {
+            var distances = new List<double>();
+
+            double halfLength = totalLength / 2.0;
+
+            if (halfLength >= minEdgeOffsetInFeet && halfLength <= maxEdgeOffsetInFeet)
+            {
+                distances.Add(halfLength);
+                return distances;
+            }
+
+            if (halfLength < minEdgeOffsetInFeet)
+                throw new InvalidOperationException("Path length is too short to fulfill min edge offset.");
+
+            double availableSpan = totalLength - (2 * minEdgeOffsetInFeet);
+            int stepCount = (int)Math.Floor(availableSpan / stepInFeet);
+
+            if (stepCount == 0)
+                throw new InvalidOperationException($"Cannot symmetrically place supports. " +
+                    $"Decrease step size or increase Max edge offset.");
+
+            double actualEdgeOffset = (totalLength - (stepCount * stepInFeet)) / 2.0;
+
+            if (actualEdgeOffset > maxEdgeOffsetInFeet)
+            {
+                throw new InvalidOperationException(
+                    $"Calculated edge offset exceeds Max edge offset. " +
+                    $"Decrease the step distance or increase Max edge offset.");
+            }
+
+            for (int i = 0; i <= stepCount; i++)
+                distances.Add(actualEdgeOffset + (i * stepInFeet));
+
+            return distances;
+        }
+
         private static WorkZoneBounds ComputeWorkZoneBounds(List<Curve> curves)
         {
             var packContext = new PackContext(curves[0]);

@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Common.R22_24.Models;
 using System;
 using System.Collections.Generic;
 
@@ -24,46 +25,30 @@ namespace Common.R22_24
                 return null;
             }
 
-            Curve baseCurve = curves[0];
-            XYZ startPoint = baseCurve.GetEndPoint(0);
-            XYZ dir = (baseCurve.GetEndPoint(1) - startPoint).Normalize();
-            XYZ perp = new XYZ(-dir.Y, dir.X, 0);
+            var workZone = ComputeWorkZoneBounds(curves);
+            perpWidth = workZone.PerpWidth;
+            alongLength = workZone.AlongLength;
 
-            Transform toWorld = Transform.Identity;
-            toWorld.Origin = startPoint;
-            toWorld.BasisX = dir;
-            toWorld.BasisY = perp;
-            toWorld.BasisZ = XYZ.BasisZ;
-            Transform toLocal = toWorld.Inverse;
+            if (!workZone.IsValid) return null;
 
-            double maxStart = double.MinValue;
-            double minEnd = double.MaxValue;
-            double minPerp = double.MaxValue;
-            double maxPerp = double.MinValue;
-            double minZ = double.MaxValue;
+            XYZ localStart = new XYZ(workZone.MaxStart, workZone.PerpCenter, 0);
+            XYZ worldStart = workZone.ToWorld.OfPoint(localStart);
 
-            foreach (Curve curve in curves)
-            {
-                XYZ l0 = toLocal.OfPoint(curve.GetEndPoint(0));
-                XYZ l1 = toLocal.OfPoint(curve.GetEndPoint(1));
+            return new XYZ(worldStart.X, worldStart.Y, workZone.MinZ - conduitRadius);
+        }
 
-                maxStart = Math.Max(maxStart, Math.Min(l0.X, l1.X));
-                minEnd = Math.Min(minEnd, Math.Max(l0.X, l1.X));
-                minPerp = Math.Min(minPerp, Math.Min(l0.Y, l1.Y));
-                maxPerp = Math.Max(maxPerp, Math.Max(l0.Y, l1.Y));
-                minZ = Math.Min(minZ, Math.Min(curve.GetEndPoint(0).Z, curve.GetEndPoint(1).Z));
-            }
+        public static XYZ GetWorkZoneCenter(List<Curve> curves, out double perpWidth, out double alongLength)
+        {
+            var workZone = ComputeWorkZoneBounds(curves);
+            perpWidth = workZone.PerpWidth;
+            alongLength = workZone.AlongLength;
 
-            perpWidth = maxPerp - minPerp;
-            alongLength = minEnd - maxStart;
+            if (!workZone.IsValid) return null;
 
-            if (maxStart >= minEnd) return null;
+            XYZ localCenter = new XYZ(workZone.AlongCenter, workZone.PerpCenter, 0);
+            XYZ worldCenter = workZone.ToWorld.OfPoint(localCenter);
 
-            XYZ localStart = new XYZ(maxStart, (minPerp + maxPerp) * 0.5, 0);
-            XYZ worldStart = toWorld.OfPoint(localStart);
-            double bottomZ = minZ - conduitRadius;
-
-            return new XYZ(worldStart.X, worldStart.Y, bottomZ);
+            return new XYZ(worldCenter.X, worldCenter.Y, workZone.MinZ);
         }
 
         public static XYZ GetPathDirection(Element element)
@@ -74,7 +59,7 @@ namespace Common.R22_24
             return XYZ.BasisX;
         }
 
-        public static XYZ GetWorkZoneCenter(List<Curve> curves, out double perpWidth, out double alongLength)
+        private static WorkZoneBounds ComputeWorkZoneBounds(List<Curve> curves)
         {
             Curve baseCurve = curves[0];
             XYZ origin = baseCurve.GetEndPoint(0);
@@ -104,15 +89,7 @@ namespace Common.R22_24
                 minZ = Math.Min(minZ, Math.Min(curve.GetEndPoint(0).Z, curve.GetEndPoint(1).Z));
             }
 
-            perpWidth = maxPerp - minPerp;
-            alongLength = minEnd - maxStart;
-
-            if (maxStart >= minEnd) return null;
-
-            XYZ localCenter = new XYZ((maxStart + minEnd) * 0.5, (minPerp + maxPerp) * 0.5, 0);
-            XYZ worldCenter = toWorld.OfPoint(localCenter);
-
-            return new XYZ(worldCenter.X, worldCenter.Y, minZ);
+            return new WorkZoneBounds(toWorld, maxStart, minEnd, minPerp, maxPerp, minZ);
         }
     }
 }

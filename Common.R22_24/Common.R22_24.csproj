@@ -51,6 +51,7 @@
   <ItemGroup>
     <Compile Include="ElementFinder.cs" />
     <Compile Include="Filters\ConduitSelectionFilter.cs" />
+    <Compile Include="Models\WorkZoneBoundsModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SupportCreator.cs" />
     <Compile Include="SupportPlacementCalculator.cs" />

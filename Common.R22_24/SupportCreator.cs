@@ -1,12 +1,10 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Electrical;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
 using Common.R22_24.Validators;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace Common.R22_24
 {
@@ -33,6 +31,9 @@ namespace Common.R22_24
             double maxEdgeOffsetInFeet,
             double rodOffsetInFeet = DEFAULT_ROD_OFFSET_IN_FEET)
         {
+            ValidatePlacementInputs(supportSymbol, level);
+            EnsureSymbolIsActive(supportSymbol);
+
             if (elements == null || !elements.Any()) return new List<FamilyInstance>();
 
             List<Curve> curves = _elementFinder.GetCurves(elements);
@@ -52,10 +53,7 @@ namespace Common.R22_24
                 return new List<FamilyInstance>();
             }
 
-            if (alongLength <= (minEdgeOffsetInFeet * 2)) return new List<FamilyInstance>();
-
-            Curve baseCurve = curves[0];
-            XYZ dir = (baseCurve.GetEndPoint(1) - baseCurve.GetEndPoint(0)).Normalize();
+            XYZ dir = SupportPlacementCalculator.GetPathDirection(elements[0]);
 
             var supports = new List<FamilyInstance>();
 
@@ -78,6 +76,9 @@ namespace Common.R22_24
             double rodOffsetInFeet = DEFAULT_ROD_OFFSET_IN_FEET,
             XYZ customPoint = null)
         {
+            ValidatePlacementInputs(supportSymbol, level);
+            EnsureSymbolIsActive(supportSymbol);
+
             if (elements == null || !elements.Any())
                 throw new ArgumentException("Elements list cannot be null or empty.", nameof(elements));
 
@@ -99,19 +100,24 @@ namespace Common.R22_24
             FamilySymbol supportSymbol, List<Element> elements, double perpWidth, Level level,
             double rodOffsetInFeet, XYZ placementPoint)
         {
-            ValidatePlacementInputs(supportSymbol, level);
-            EnsureSymbolIsActive(supportSymbol);
-
             Element hostElement = elements.First();
 
             FamilyInstance supportInstance = _doc.Create.NewFamilyInstance(
-                placementPoint, supportSymbol, null, level, StructuralType.NonStructural);
+                placementPoint, supportSymbol, level, StructuralType.NonStructural);
 
             SetZValue(supportInstance, placementPoint.Z);
+            RotatePerpendicular(supportInstance, placementPoint, hostElement);
+            SetWidth(supportInstance, perpWidth, rodOffsetInFeet);
+            CopyComment(hostElement, supportInstance);
 
-            if (elements != null && elements.Count > 0)
+            return supportInstance;
+        }
+
+        private void CopyComment(Element element, FamilyInstance supportInstance)
+        {
+            if (element != null)
             {
-                Parameter conduitCommentParam = elements[0].get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS);
+                Parameter conduitCommentParam = element.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS);
 
                 if (conduitCommentParam != null && conduitCommentParam.HasValue)
                 {
@@ -123,22 +129,11 @@ namespace Common.R22_24
                         supportCommentParam.Set(commentValue);
                 }
             }
-
-            RotatePerpendicular(supportInstance, placementPoint, hostElement);
-            SetWidth(supportInstance, perpWidth, rodOffsetInFeet);
-
-            return supportInstance;
         }
 
-        private void SetWidth(FamilyInstance support, double perpWidth, double rodOffsetInFeet)
-        {
-            support.LookupParameter("LENGTH")?.Set(perpWidth + (2 * rodOffsetInFeet));
-        }
+        private void SetWidth(FamilyInstance support, double perpWidth, double rodOffsetInFeet) => support.LookupParameter("LENGTH")?.Set(perpWidth + (2 * rodOffsetInFeet));
 
-        private void SetZValue(FamilyInstance support, double value)
-        {
-            support.LookupParameter("TOS-TIER1")?.Set(value);
-        }
+        private void SetZValue(FamilyInstance support, double value) => support.LookupParameter("TOS-TIER1")?.Set(value);
 
         private double GetFirstConduitRadius(List<Element> elements)
         {

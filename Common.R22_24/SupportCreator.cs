@@ -32,44 +32,18 @@ namespace Common.R22_24
             double maxEdgeOffsetInFeet,
             double rodOffsetInFeet = DEFAULT_ROD_OFFSET_IN_FEET)
         {
-            ValidatePlacementInputs(supportSymbol, level);
-            EnsureSymbolIsActive(supportSymbol);
-
-            if (elements == null || !elements.Any()) return new List<FamilyInstance>();
-
-            List<Curve> curves = _elementFinder.GetCurves(elements);
-
-            if (!curves.Any()) throw new ArgumentException("No valid curves found.");
-
-            if (!ConduitValidator.Validate(elements, curves))
+            if (!PrepareAndValidateCurves(supportSymbol, level, elements, out var curves))
                 return new List<FamilyInstance>();
 
-            XYZ zoneStartPoint = SupportPlacementCalculator.
-                GetWorkZoneStart(curves, GetFirstConduitRadius(elements), out double perpWidth, out double alongLength);
+            XYZ zoneStartPoint = SupportPlacementCalculator.GetWorkZoneStart(
+                curves, GetFirstConduitRadius(elements), out double perpWidth, out double alongLength);
 
-            if (zoneStartPoint == null) return new List<FamilyInstance>();
-
-            if (alongLength < MIN_WORK_ZONE_LENGTH_IN_FEET)
-            {
-                TaskDialog.Show("Support Creation", "The selected conduit path is too short. The work zone length must be at least 2 feet.");
+            if (zoneStartPoint == null)
                 return new List<FamilyInstance>();
-            }
 
-            List<double> placementDistances;
-
-            try
-            {
-                placementDistances = SupportPlacementCalculator.
-                    CalculateSymmetricPlacementDistances(alongLength, stepInFeet, minEdgeOffsetInFeet, maxEdgeOffsetInFeet);
-            }
-            catch (InvalidOperationException ex)
-            {
-                TaskDialog.Show("Support Placement Error", ex.Message);
-                return new List<FamilyInstance>();
-            }
+            List<double> placementDistances = GetPlacementDistances(alongLength, stepInFeet, minEdgeOffsetInFeet, maxEdgeOffsetInFeet);
 
             XYZ dir = SupportPlacementCalculator.GetPathDirection(elements[0]);
-
             var supports = new List<FamilyInstance>();
 
             foreach (double dist in placementDistances)
@@ -81,22 +55,11 @@ namespace Common.R22_24
             return supports;
         }
 
-        public FamilyInstance CreateSupport(
-            FamilySymbol supportSymbol,
-            List<Element> elements,
-            Level level,
-            double rodOffsetInFeet = DEFAULT_ROD_OFFSET_IN_FEET,
-            XYZ customPoint = null)
+        public FamilyInstance CreateSupport(FamilySymbol supportSymbol, List<Element> elements,
+            Level level, double rodOffsetInFeet = DEFAULT_ROD_OFFSET_IN_FEET, XYZ customPoint = null)
         {
-            ValidatePlacementInputs(supportSymbol, level);
-            EnsureSymbolIsActive(supportSymbol);
-
-            if (elements == null || !elements.Any())
-                throw new ArgumentException("Elements list cannot be null or empty.", nameof(elements));
-
-            List<Curve> curves = _elementFinder.GetCurves(elements);
-
-            if (!curves.Any()) throw new ArgumentException("No valid curves found.");
+            if (!PrepareAndValidateCurves(supportSymbol, level, elements, out var curves))
+                return null;
 
             XYZ centerPoint = SupportPlacementCalculator.GetWorkZoneCenter(curves, out double perpWidth, out _);
 
@@ -117,50 +80,22 @@ namespace Common.R22_24
             double maxEdgeOffsetInFeet,
             double rodOffsetInFeet = DEFAULT_ROD_OFFSET_IN_FEET)
         {
-            ValidatePlacementInputs(supportSymbol, level);
-            EnsureSymbolIsActive(supportSymbol);
-
-            if (elements == null || !elements.Any()) return new List<FamilyInstance>();
-
-            List<Curve> curves = _elementFinder.GetCurves(elements);
-
-            if (!curves.Any()) throw new ArgumentException("No valid curves found.");
-
-            if (!ConduitValidator.Validate(elements, curves))
+            if (!PrepareAndValidateCurves(supportSymbol, level, elements, out var curves))
                 return new List<FamilyInstance>();
 
             double conduitRadius = GetFirstConduitRadius(elements);
 
-            List<PackSegment> packSegments = SupportPlacementCalculator.BuildPackSegments(curves, conduitRadius,
-                _doc.Application.ShortCurveTolerance, out XYZ zoneStartPoint, out XYZ dir);
+            List<PackSegment> packSegments = SupportPlacementCalculator.BuildPackSegments(
+                curves, conduitRadius, _doc.Application.ShortCurveTolerance, out XYZ zoneStartPoint, out XYZ dir);
 
-            if (!packSegments.Any()) return new List<FamilyInstance>();
+            if (!packSegments.Any())
+                return new List<FamilyInstance>();
 
             double totalLength = packSegments.Sum(s => s.Length);
 
-            if (totalLength < MIN_WORK_ZONE_LENGTH_IN_FEET)
-            {
-                TaskDialog.Show("Support Creation", "The selected conduit path is too short. The work zone length must be at least 2 feet.");
-                return new List<FamilyInstance>();
-            }
-
-            List<double> placementDistances;
-            try
-            {
-                placementDistances = SupportPlacementCalculator.CalculateSymmetricPlacementDistances(
-                    totalLength, stepInFeet, minEdgeOffsetInFeet, maxEdgeOffsetInFeet);
-            }
-            catch (InvalidOperationException ex)
-            {
-                TaskDialog.Show("Support Placement Error", ex.Message);
-                return new List<FamilyInstance>();
-            }
+            List<double> placementDistances = GetPlacementDistances(totalLength, stepInFeet, minEdgeOffsetInFeet, maxEdgeOffsetInFeet);
 
             XYZ perpDir = new XYZ(-dir.Y, dir.X, 0).Normalize();
-
-            double startDist = minEdgeOffsetInFeet;
-            double endDist = totalLength - minEdgeOffsetInFeet;
-
             int segmentIndex = 0;
             var supports = new List<FamilyInstance>();
             var currentSegmentEndDistance = packSegments[0].Length;
@@ -183,8 +118,12 @@ namespace Common.R22_24
         }
 
         private FamilyInstance CreateSupportAt(
-            FamilySymbol supportSymbol, List<Element> elements, double perpWidth, Level level,
-            double rodOffsetInFeet, XYZ placementPoint)
+            FamilySymbol supportSymbol, 
+            List<Element> elements, 
+            double perpWidth, 
+            Level level,
+            double rodOffsetInFeet, 
+            XYZ placementPoint)
         {
             Element hostElement = elements.First();
 
@@ -199,6 +138,7 @@ namespace Common.R22_24
             return supportInstance;
         }
 
+        #region Private Helper Methods
         private void CopyComment(Element element, FamilyInstance supportInstance)
         {
             if (element != null)
@@ -244,7 +184,9 @@ namespace Common.R22_24
                 ElementTransformUtils.RotateElement(_doc, instance.Id, axis, angle);
             }
         }
+        #endregion
 
+        #region Validation and Preparation
         private void EnsureSymbolIsActive(FamilySymbol symbol)
         {
             if (!symbol.IsActive)
@@ -262,5 +204,38 @@ namespace Common.R22_24
             if (level == null)
                 throw new ArgumentNullException(nameof(level), "Level is null.");
         }
+
+        private bool PrepareAndValidateCurves(FamilySymbol supportSymbol, Level level,
+            List<Element> elements, out List<Curve> curves)
+        {
+            curves = null;
+
+            ValidatePlacementInputs(supportSymbol, level);
+            EnsureSymbolIsActive(supportSymbol);
+
+            if (elements == null || !elements.Any())
+                return false;
+
+            curves = _elementFinder.GetCurves(elements);
+
+            ConduitValidator.Validate(elements, curves);
+
+            return true;
+        }
+
+        private List<double> GetPlacementDistances(
+            double totalLength,
+            double stepInFeet,
+            double minEdgeOffsetInFeet,
+            double maxEdgeOffsetInFeet)
+        {
+            if (totalLength < MIN_WORK_ZONE_LENGTH_IN_FEET)
+                throw new InvalidOperationException(
+                    $"The selected conduit path is too short. Minimum required is {MIN_WORK_ZONE_LENGTH_IN_FEET:F2}\'.");
+
+            return SupportPlacementCalculator.CalculateSymmetricPlacementDistances(
+                    totalLength, stepInFeet, minEdgeOffsetInFeet, maxEdgeOffsetInFeet);
+        }
+        #endregion
     }
 }

@@ -60,7 +60,29 @@ namespace ExtendedSuportCreator.R22_24
 
                     List<Element> elementList = conduits.Cast<Element>().ToList();
 
-                    placementService.CreateSupportsAlongSegmentedPath(symbol, elementList, level, stepInFeet, minOffsetFeet, maxOffsetFeet);
+                    try
+                    {
+                        placementService.CreateSupportsAlongSegmentedPath(symbol, elementList, level, stepInFeet, minOffsetFeet, maxOffsetFeet);
+                    }
+                    catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+                    {
+                        return Result.Cancelled;
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        TaskDialog.Show("Support Placement Error", ex.Message);
+                        return Result.Failed;
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        TaskDialog.Show("Support Placement Error", ex.Message);
+                        return Result.Failed;
+                    }
+                    catch (Exception ex)
+                    {
+                        TaskDialog.Show("Critical Error", $"{ex.Message}");
+                        return Result.Failed;
+                    }
 
                     trans.Commit();
                 }

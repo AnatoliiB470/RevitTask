@@ -60,7 +60,7 @@ namespace ExtendedSuportCreator.R22_24
 
                     List<Element> elementList = conduits.Cast<Element>().ToList();
 
-                    placementService.CreateSupportsAlongPath(symbol, elementList, level, stepInFeet, minOffsetFeet, maxOffsetFeet);
+                    placementService.CreateSupportsAlongSegmentedPath(symbol, elementList, level, stepInFeet, minOffsetFeet, maxOffsetFeet);
 
                     trans.Commit();
                 }

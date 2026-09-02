@@ -2,6 +2,7 @@
 using Common.R22_24.Models;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Common.R22_24
 {
@@ -59,37 +60,72 @@ namespace Common.R22_24
             return XYZ.BasisX;
         }
 
-        private static WorkZoneBounds ComputeWorkZoneBounds(List<Curve> curves)
+        public static List<PackSegment> BuildPackSegments(List<Curve> curves, double conduitRadius, double tolerance, out XYZ zoneStartPoint, out XYZ dir)
         {
-            Curve baseCurve = curves[0];
-            XYZ origin = baseCurve.GetEndPoint(0);
-            XYZ dir = (baseCurve.GetEndPoint(1) - origin).Normalize();
-            XYZ perp = new XYZ(-dir.Y, dir.X, 0);
-
-            Transform toWorld = Transform.Identity;
-            toWorld.Origin = origin;
-            toWorld.BasisX = dir;
-            toWorld.BasisY = perp;
-            toWorld.BasisZ = XYZ.BasisZ;
-            Transform toLocal = toWorld.Inverse;
-
-            double maxStart = double.MinValue, minEnd = double.MaxValue;
-            double minPerp = double.MaxValue, maxPerp = double.MinValue;
-            double minZ = double.MaxValue;
-
-            foreach (Curve curve in curves)
+            if (curves == null || curves.Count == 0)
             {
-                XYZ l0 = toLocal.OfPoint(curve.GetEndPoint(0));
-                XYZ l1 = toLocal.OfPoint(curve.GetEndPoint(1));
-
-                maxStart = Math.Max(maxStart, Math.Min(l0.X, l1.X));
-                minEnd = Math.Min(minEnd, Math.Max(l0.X, l1.X));
-                minPerp = Math.Min(minPerp, Math.Min(l0.Y, l1.Y));
-                maxPerp = Math.Max(maxPerp, Math.Max(l0.Y, l1.Y));
-                minZ = Math.Min(minZ, Math.Min(curve.GetEndPoint(0).Z, curve.GetEndPoint(1).Z));
+                zoneStartPoint = null;
+                dir = XYZ.BasisX;
+                return new List<PackSegment>();
             }
 
-            return new WorkZoneBounds(toWorld, maxStart, minEnd, minPerp, maxPerp, minZ);
+            var packContext = new PackContext(curves[0]);
+            var localCurves = curves.Select(c => new LocalCurve(c, packContext)).ToList();
+            dir = packContext.Dir;
+
+            var rawPoints = localCurves.SelectMany(c => new[] { c.StartX, c.EndX })
+                                 .OrderBy(x => x)
+                                 .ToList();
+
+            var breakpoints = new List<double>();
+
+            foreach (double x in rawPoints)
+            {
+                if (breakpoints.Count == 0 || x - breakpoints[breakpoints.Count - 1] > tolerance)
+                    breakpoints.Add(x);
+            }
+
+            double packStart = breakpoints[0];
+            double minZ = localCurves.Min(c => c.MinZ);
+
+            XYZ startWorld = packContext.ToWorld.OfPoint(new XYZ(packStart, 0, 0));
+            zoneStartPoint = new XYZ(startWorld.X, startWorld.Y, minZ - conduitRadius);
+
+            var segments = new List<PackSegment>();
+
+            for (int i = 0; i < breakpoints.Count - 1; i++)
+            {
+                double segStart = breakpoints[i];
+                double segEnd = breakpoints[i + 1];
+
+                double segMid = (segStart + segEnd) / 2.0;
+
+                var active = localCurves.Where(c => c.StartX <= segMid && c.EndX >= segMid).ToList();
+
+                if (active.Count == 0) break;
+
+                double width = active.Max(c => c.MaxY) - active.Min(c => c.MinY);
+                double centerY = (active.Max(c => c.MaxY) + active.Min(c => c.MinY)) / 2.0;
+                double segmentLength = segEnd - segStart;
+
+                segments.Add(new PackSegment(segmentLength, width, centerY));
+            }
+
+            return segments;
+        }
+
+        private static WorkZoneBounds ComputeWorkZoneBounds(List<Curve> curves)
+        {
+            var packContext = new PackContext(curves[0]);
+            var localCurves = curves.Select(c => new LocalCurve(c, packContext)).ToList();
+
+            double maxStart = localCurves.Max(c => c.StartX);
+            double minEnd = localCurves.Min(c => c.EndX);
+            double minPerp = localCurves.Min(c => c.MinY);
+            double maxPerp = localCurves.Max(c => c.MaxY);
+            double minZ = localCurves.Min(c => c.MinZ);
+
+            return new WorkZoneBounds(packContext.ToWorld, maxStart, minEnd, minPerp, maxPerp, minZ);
         }
     }
 }

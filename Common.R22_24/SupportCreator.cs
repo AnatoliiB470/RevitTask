@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
+using Common.R22_24.Models;
 using Common.R22_24.Validators;
 using System;
 using System.Collections.Generic;
@@ -94,6 +95,68 @@ namespace Common.R22_24
             XYZ placementPoint = customPoint ?? centerPoint;
 
             return CreateSupportAt(supportSymbol, elements, perpWidth, level, rodOffsetInFeet, placementPoint);
+        }
+
+        public List<FamilyInstance> CreateSupportsAlongSegmentedPath(
+            FamilySymbol supportSymbol,
+            List<Element> elements,
+            Level level,
+            double stepInFeet,
+            double minEdgeOffsetInFeet,
+            double maxEdgeOffsetInFeet,
+            double rodOffsetInFeet = DEFAULT_ROD_OFFSET_IN_FEET)
+        {
+            ValidatePlacementInputs(supportSymbol, level);
+            EnsureSymbolIsActive(supportSymbol);
+
+            if (elements == null || !elements.Any()) return new List<FamilyInstance>();
+
+            List<Curve> curves = _elementFinder.GetCurves(elements);
+
+            if (!curves.Any()) throw new ArgumentException("No valid curves found.");
+
+            if (!ConduitValidator.Validate(elements, curves))
+                return new List<FamilyInstance>();
+
+            double conduitRadius = GetFirstConduitRadius(elements);
+
+            List<PackSegment> packSegments = SupportPlacementCalculator.BuildPackSegments(curves, conduitRadius, 
+                _doc.Application.ShortCurveTolerance, out XYZ zoneStartPoint, out XYZ dir);
+
+            if (!packSegments.Any()) return new List<FamilyInstance>();
+
+            double totalLength = packSegments.Sum(s => s.Length);
+
+            if (totalLength < MIN_WORK_ZONE_LENGTH_IN_FEET)
+            {
+                TaskDialog.Show("Support Creation", "The selected conduit path is too short. The work zone length must be at least 2 feet.");
+                return new List<FamilyInstance>();
+            }
+
+            XYZ perpDir = new XYZ(-dir.Y, dir.X, 0).Normalize();
+
+            double startDist = minEdgeOffsetInFeet;
+            double endDist = totalLength - minEdgeOffsetInFeet;
+
+            int segmentIndex = 0;
+            var supports = new List<FamilyInstance>();
+            var currentSegmentEndDistance = packSegments[0].Length;
+
+            for (double currentDist = startDist; currentDist <= endDist; currentDist += stepInFeet)
+            {
+                while (segmentIndex < packSegments.Count - 1 && currentDist > currentSegmentEndDistance)
+                {
+                    segmentIndex++;
+                    currentSegmentEndDistance += packSegments[segmentIndex].Length;
+                }
+
+                var seg = packSegments[segmentIndex];
+                XYZ placementPoint = zoneStartPoint + (dir * currentDist) + (perpDir * seg.CenterY);
+
+                supports.Add(CreateSupportAt(supportSymbol, elements, seg.Width, level, rodOffsetInFeet, placementPoint));
+            }
+
+            return supports;
         }
 
         private FamilyInstance CreateSupportAt(

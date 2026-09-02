@@ -1,17 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Autodesk.Revit.DB;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace ExtendedSuportCreator.R22_24
 {
@@ -20,27 +9,28 @@ namespace ExtendedSuportCreator.R22_24
     /// </summary>
     public partial class SupportSettingsControl : UserControl
     {
+        private readonly Document _doc;
         public double StepInFeet { get; private set; }
         public double MinOffset { get; private set; }
         public double MaxOffset { get; private set; }
 
-        public SupportSettingsControl()
+        public SupportSettingsControl(Document doc)
         {
             InitializeComponent();
+            _doc = doc;
         }
 
         private void OnOkClick(object sender, RoutedEventArgs e)
         {
-            if (!double.TryParse(StepTextBox.Text, out double step) || step <= 0)
+            if (!TryParseLength(StepTextBox.Text, out double step) || step <= 0)
             {
-                ShowError("Step must be a positive number.");
+                ShowError("Step must be a positive length (e.g. 1' 0\").");
                 return;
             }
-
-            if (!double.TryParse(MinOffsetTextBox.Text, out double minOffset) ||
-                !double.TryParse(MaxOffsetTextBox.Text, out double maxOffset))
+            if (!TryParseLength(MinOffsetTextBox.Text, out double minOffset) ||
+                !TryParseLength(MaxOffsetTextBox.Text, out double maxOffset))
             {
-                ShowError("Offsets must be numbers.");
+                ShowError("Offsets must be a valid length (e.g. 6' 2 1/2\").");
                 return;
             }
 
@@ -62,10 +52,15 @@ namespace ExtendedSuportCreator.R22_24
             Window.GetWindow(this).DialogResult = false;
         }
 
+        private bool TryParseLength(string text, out double valueInFeet)
+        {
+            return UnitFormatUtils.TryParse(_doc.GetUnits(), SpecTypeId.Length, text, out valueInFeet);
+        }
+
         private void ShowError(string message)
         {
             ErrorText.Text = message;
-            ErrorText.Visibility = Visibility.Visible;
+            ErrorText.Visibility = System.Windows.Visibility.Visible;
         }
 
     }

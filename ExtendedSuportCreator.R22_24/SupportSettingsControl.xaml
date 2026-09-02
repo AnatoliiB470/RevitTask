@@ -4,14 +4,14 @@
              Background="LightGray"
              Width="300">
     <StackPanel Margin="10">
-        <TextBlock Text="Step between supports (ft):"/>
-        <TextBox x:Name="StepTextBox" Text="1.0" Margin="0,0,0,10"/>
+        <TextBlock Text="Step between supports:"/>
+        <TextBox x:Name="StepTextBox" Text="1'" Margin="0,0,0,10"/>
 
-        <TextBlock Text="Min offset from edge (in):"/>
-        <TextBox x:Name="MinOffsetTextBox" Text="6" Margin="0,0,0,10"/>
+        <TextBlock Text="Min offset from edge:"/>
+        <TextBox x:Name="MinOffsetTextBox" Text='6"' Margin="0,0,0,10"/>
 
-        <TextBlock Text="Max offset from edge (in):"/>
-        <TextBox x:Name="MaxOffsetTextBox" Text="8" Margin="0,0,0,10"/>
+        <TextBlock Text="Max offset from edge:"/>
+        <TextBox x:Name="MaxOffsetTextBox" Text='8"' Margin="0,0,0,10"/>
 
         <TextBlock x:Name="ErrorText" Foreground="Red" TextWrapping="Wrap" Visibility="Collapsed" Margin="0,0,0,10"/>
 

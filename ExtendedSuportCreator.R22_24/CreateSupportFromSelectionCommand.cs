@@ -32,7 +32,7 @@ namespace ExtendedSuportCreator.R22_24
                 FamilySymbol symbol = finder.GetSupportSymbol(SUPPORT_FAMILY_NAME);
                 Level level = finder.GetActiveLevel(DEFAULT_LEVEL_NAME);
 
-                var settingsControl = new SupportSettingsControl();
+                var settingsControl = new SupportSettingsControl(doc);
 
                 var settingsWindow = new Window
                 {
@@ -44,12 +44,13 @@ namespace ExtendedSuportCreator.R22_24
                 };
 
                 bool? dialogResult = settingsWindow.ShowDialog();
+
                 if (dialogResult != true)
                     return Result.Cancelled;
 
                 double stepInFeet = settingsControl.StepInFeet;
-                double minOffsetFeet = UnitUtils.ConvertToInternalUnits(settingsControl.MinOffset, UnitTypeId.Inches);
-                double maxOffsetFeet = UnitUtils.ConvertToInternalUnits(settingsControl.MaxOffset, UnitTypeId.Inches);
+                double minOffsetFeet = settingsControl.MinOffset;
+                double maxOffsetFeet = settingsControl.MaxOffset;
 
                 SupportCreator placementService = new SupportCreator(doc);
 

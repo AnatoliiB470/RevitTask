@@ -144,15 +144,6 @@ namespace Common.R22_24
 
             double actualEdgeOffset = (totalLength - (stepCount * stepInFeet)) / 2.0;
 
-            if (actualEdgeOffset < minEdgeOffsetInFeet)
-            {
-                actualEdgeOffset = minEdgeOffsetInFeet;
-            }
-            else if (actualEdgeOffset > maxEdgeOffsetInFeet)
-            {
-                actualEdgeOffset = maxEdgeOffsetInFeet;
-            }
-
             for (int i = 0; i <= stepCount; i++)
                 distances.Add(actualEdgeOffset + (i * stepInFeet));
 

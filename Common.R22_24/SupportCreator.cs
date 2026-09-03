@@ -108,6 +108,9 @@ namespace Common.R22_24
                     currentSegmentEndDistance += packSegments[segmentIndex].Length;
                 }
 
+                if (packSegments[segmentIndex].Length < minEdgeOffsetInFeet * 2)
+                    continue;
+
                 var seg = packSegments[segmentIndex];
                 XYZ placementPoint = zoneStartPoint + (dir * currentDist) + (perpDir * seg.CenterY);
 

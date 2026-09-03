@@ -33,6 +33,31 @@ namespace Common.R22_24
                                   && x.Name.Equals(familyName, StringComparison.OrdinalIgnoreCase));
         }
 
+        public FamilySymbol GetJHookSymbolByDiameter(string familyName, double conduitDiameterInFeet)
+        {
+            var candidates = new FilteredElementCollector(_doc)
+                .OfClass(typeof(FamilySymbol))
+                .OfCategory(BuiltInCategory.OST_ElectricalFixtures)
+                .Cast<FamilySymbol>()
+                .Where(x => x.Family.Name.Equals(familyName, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            var sized = new List<(FamilySymbol Symbol, double SizeInFeet)>();
+
+            foreach (FamilySymbol symbol in candidates)
+            {
+                string sizeToken = symbol.Name.Split(' ').LastOrDefault();
+
+                if (sizeToken != null && UnitFormatUtils.TryParse(_doc.GetUnits(), SpecTypeId.Length, sizeToken, out double sizeInFeet))
+                    sized.Add((symbol, sizeInFeet));
+            }
+
+            sized = sized.OrderBy(x => x.SizeInFeet).ToList();
+
+            var fit = sized.FirstOrDefault(x => x.SizeInFeet >= conduitDiameterInFeet);
+            return fit.Symbol ?? sized.LastOrDefault().Symbol;
+        }
+
         public Level GetActiveLevel(string levelName)
         {
             View activeView = _doc.ActiveView;

@@ -109,7 +109,7 @@ namespace Common.R22_24
                 double centerY = (active.Max(c => c.MaxY) + active.Min(c => c.MinY)) / 2.0;
                 double segmentLength = segEnd - segStart;
 
-                segments.Add(new PackSegment(segmentLength, width, centerY));
+                segments.Add(new PackSegment(segmentLength, width, centerY, active.Count));
             }
 
             return segments;

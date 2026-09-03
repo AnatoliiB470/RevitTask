@@ -91,7 +91,15 @@ namespace Common.R22_24
             if (!packSegments.Any())
                 return new List<FamilyInstance>();
 
-            FamilySymbol trapezeSymbol = GetTrapezeSymbol();
+            FamilySymbol trapezeSymbol = null;
+            FamilySymbol jHookSymbol = null;
+
+            if (packSegments.Any(seg => seg.ElementCount > 1))
+                trapezeSymbol = GetTrapezeSymbol();
+
+            if (packSegments.Any(seg => seg.ElementCount == 1))
+                jHookSymbol = GetJHookSymbol(conduitRadius * 2.0);
+
             XYZ perpDir = new XYZ(-dir.Y, dir.X, 0).Normalize();
             var supports = new List<FamilyInstance>();
             double segmentStartDistance = 0;
@@ -108,7 +116,9 @@ namespace Common.R22_24
                         double globalDist = segmentStartDistance + localDist;
                         XYZ placementPoint = zoneStartPoint + (dir * globalDist) + (perpDir * seg.CenterY);
 
-                        FamilyInstance support = CreateSupportAt(trapezeSymbol, elements, seg.Width, level, rodOffsetInFeet, placementPoint);
+                        FamilyInstance support = seg.ElementCount == 1 
+                            ? CreateSupportAt(jHookSymbol, elements, seg.Width, level, rodOffsetInFeet, placementPoint)
+                            : CreateSupportAt(trapezeSymbol, elements, seg.Width, level, rodOffsetInFeet, placementPoint);
 
                         supports.Add(support);
                     }
@@ -118,16 +128,6 @@ namespace Common.R22_24
             }
 
             return supports;
-        }
-
-        public FamilySymbol GetTrapezeSymbol()
-        {
-            FamilySymbol trapezeSymbol = _elementFinder.GetSupportSymbol(CommonConstants.TRAPEZE_FAMILY_NAME);
-
-            ValidateSymbol(trapezeSymbol, nameof(trapezeSymbol));
-            EnsureSymbolIsActive(trapezeSymbol);
-
-            return trapezeSymbol;
         }
 
         private FamilyInstance CreateSupportAt(
@@ -245,6 +245,26 @@ namespace Common.R22_24
 
             return SupportPlacementCalculator.CalculateSymmetricPlacementDistances(
                     totalLength, stepInFeet, minEdgeOffsetInFeet, maxEdgeOffsetInFeet);
+        }
+
+        public FamilySymbol GetTrapezeSymbol()
+        {
+            FamilySymbol trapezeSymbol = _elementFinder.GetSupportSymbol(CommonConstants.TRAPEZE_FAMILY_NAME);
+
+            ValidateSymbol(trapezeSymbol, nameof(trapezeSymbol));
+            EnsureSymbolIsActive(trapezeSymbol);
+
+            return trapezeSymbol;
+        }
+
+        public FamilySymbol GetJHookSymbol(double diameter)
+        {
+            FamilySymbol jHookSymbol = _elementFinder.GetJHookSymbolByDiameter(CommonConstants.JHOOK_FAMILY_NAME, diameter);
+
+            ValidateSymbol(jHookSymbol, nameof(jHookSymbol));
+            EnsureSymbolIsActive(jHookSymbol);
+
+            return jHookSymbol;
         }
         #endregion
     }

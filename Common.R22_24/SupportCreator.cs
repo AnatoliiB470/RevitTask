@@ -91,41 +91,38 @@ namespace Common.R22_24
             if (!packSegments.Any())
                 return new List<FamilyInstance>();
 
-            double totalLength = packSegments.Sum(s => s.Length);
-
-            List<double> placementDistances = GetPlacementDistances(totalLength, stepInFeet, minEdgeOffsetInFeet, maxEdgeOffsetInFeet);
-
             XYZ perpDir = new XYZ(-dir.Y, dir.X, 0).Normalize();
-            int segmentIndex = 0;
             var supports = new List<FamilyInstance>();
-            var currentSegmentEndDistance = packSegments[0].Length;
+            double segmentStartDistance = 0;
 
-            foreach (double currentDist in placementDistances)
+            foreach (var seg in packSegments)
             {
-                while (segmentIndex < packSegments.Count - 1 && currentDist > currentSegmentEndDistance)
+                if (seg.Length > MIN_WORK_ZONE_LENGTH_IN_FEET)
                 {
-                    segmentIndex++;
-                    currentSegmentEndDistance += packSegments[segmentIndex].Length;
+                    List<double> localDistances = SupportPlacementCalculator.CalculateSymmetricPlacementDistances(
+                        seg.Length, stepInFeet, minEdgeOffsetInFeet, maxEdgeOffsetInFeet);
+
+                    foreach (double localDist in localDistances)
+                    {
+                        double globalDist = segmentStartDistance + localDist;
+                        XYZ placementPoint = zoneStartPoint + (dir * globalDist) + (perpDir * seg.CenterY);
+
+                        supports.Add(CreateSupportAt(supportSymbol, elements, seg.Width, level, rodOffsetInFeet, placementPoint));
+                    }
                 }
 
-                if (packSegments[segmentIndex].Length < minEdgeOffsetInFeet * 2)
-                    continue;
-
-                var seg = packSegments[segmentIndex];
-                XYZ placementPoint = zoneStartPoint + (dir * currentDist) + (perpDir * seg.CenterY);
-
-                supports.Add(CreateSupportAt(supportSymbol, elements, seg.Width, level, rodOffsetInFeet, placementPoint));
+                segmentStartDistance += seg.Length;
             }
 
             return supports;
         }
 
         private FamilyInstance CreateSupportAt(
-            FamilySymbol supportSymbol, 
-            List<Element> elements, 
-            double perpWidth, 
+            FamilySymbol supportSymbol,
+            List<Element> elements,
+            double perpWidth,
             Level level,
-            double rodOffsetInFeet, 
+            double rodOffsetInFeet,
             XYZ placementPoint)
         {
             Element hostElement = elements.First();

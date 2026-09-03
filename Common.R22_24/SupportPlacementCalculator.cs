@@ -130,24 +130,27 @@ namespace Common.R22_24
             }
 
             if (halfLength < minEdgeOffsetInFeet)
-                throw new InvalidOperationException("Path length is too short to fulfill min edge offset.");
+                return distances;
 
             double availableSpan = totalLength - (2 * minEdgeOffsetInFeet);
             int stepCount = (int)Math.Floor(availableSpan / stepInFeet);
 
             if (stepCount == 0)
-                throw new InvalidOperationException($"Cannot symmetrically place supports. " +
-                    $"Decrease step size or increase Max edge offset.");
+            {
+                distances.Add(minEdgeOffsetInFeet);
+                distances.Add(totalLength - minEdgeOffsetInFeet);
+                return distances;
+            }
 
             double actualEdgeOffset = (totalLength - (stepCount * stepInFeet)) / 2.0;
 
-            if (actualEdgeOffset > maxEdgeOffsetInFeet)
+            if (actualEdgeOffset < minEdgeOffsetInFeet)
             {
-                var formattedEdgeOffset = UnitFormatUtils.Format(new Units(UnitSystem.Imperial), SpecTypeId.Length, actualEdgeOffset, false);
-
-                throw new InvalidOperationException(
-                        $"Calculated edge offset exceeds Max edge offset. " +
-                        $"Calculated edge offset: {formattedEdgeOffset}");
+                actualEdgeOffset = minEdgeOffsetInFeet;
+            }
+            else if (actualEdgeOffset > maxEdgeOffsetInFeet)
+            {
+                actualEdgeOffset = maxEdgeOffsetInFeet;
             }
 
             for (int i = 0; i <= stepCount; i++)

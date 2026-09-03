@@ -51,6 +51,7 @@ namespace ExtendedSuportCreator.R22_24
                 double stepInFeet = settingsControl.StepInFeet;
                 double minOffsetFeet = settingsControl.MinOffset;
                 double maxOffsetFeet = settingsControl.MaxOffset;
+                double minWorkZoneInFeet = settingsControl.MinWorkZoneInFeet;
 
                 SupportCreator placementService = new SupportCreator(doc);
 
@@ -62,7 +63,8 @@ namespace ExtendedSuportCreator.R22_24
 
                     try
                     {
-                        placementService.CreateSupportsAlongSegmentedPath(symbol, elementList, level, stepInFeet, minOffsetFeet, maxOffsetFeet);
+                        placementService.CreateSupportsAlongSegmentedPath(symbol, elementList, level, 
+                            stepInFeet, minOffsetFeet, maxOffsetFeet, minWorkZoneInFeet);
                     }
                     catch (Autodesk.Revit.Exceptions.OperationCanceledException)
                     {

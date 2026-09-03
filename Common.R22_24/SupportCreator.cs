@@ -78,6 +78,7 @@ namespace Common.R22_24
             double stepInFeet,
             double minEdgeOffsetInFeet,
             double maxEdgeOffsetInFeet,
+            double minWorkZoneLengthInFeet = MIN_WORK_ZONE_LENGTH_IN_FEET,
             double rodOffsetInFeet = DEFAULT_ROD_OFFSET_IN_FEET)
         {
             if (!PrepareAndValidateCurves(supportSymbol, level, elements, out var curves))
@@ -97,7 +98,7 @@ namespace Common.R22_24
 
             foreach (var seg in packSegments)
             {
-                if (seg.Length > MIN_WORK_ZONE_LENGTH_IN_FEET)
+                if (seg.Length > minWorkZoneLengthInFeet)
                 {
                     List<double> localDistances = SupportPlacementCalculator.CalculateSymmetricPlacementDistances(
                         seg.Length, stepInFeet, minEdgeOffsetInFeet, maxEdgeOffsetInFeet);

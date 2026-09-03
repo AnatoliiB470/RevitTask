@@ -13,6 +13,7 @@ namespace ExtendedSuportCreator.R22_24
         public double StepInFeet { get; private set; }
         public double MinOffset { get; private set; }
         public double MaxOffset { get; private set; }
+        public double MinWorkZoneInFeet { get; private set; }
 
         public SupportSettingsControl(Document doc)
         {
@@ -27,6 +28,7 @@ namespace ExtendedSuportCreator.R22_24
                 ShowError("Step must be a positive length (e.g. 1' 0\").");
                 return;
             }
+
             if (!TryParseLength(MinOffsetTextBox.Text, out double minOffset) ||
                 !TryParseLength(MaxOffsetTextBox.Text, out double maxOffset))
             {
@@ -40,9 +42,16 @@ namespace ExtendedSuportCreator.R22_24
                 return;
             }
 
+            if (!TryParseLength(MinWorkZoneTextBox.Text, out double minWorkZone) || minWorkZone <= 0)
+            {
+                ShowError("Min work zone must be a positive length (e.g. 2' 0\").");
+                return;
+            }
+
             StepInFeet = step;
             MinOffset = minOffset;
             MaxOffset = maxOffset;
+            MinWorkZoneInFeet = minWorkZone;
 
             Window.GetWindow(this).DialogResult = true;
         }

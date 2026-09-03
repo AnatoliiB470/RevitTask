@@ -1,6 +1,6 @@
 ﻿namespace Common.R22_24.Models
 {
-    public struct PackSegment
+    public class PackSegment
     {
         public PackSegment(double length, double width, double centerY)
         {

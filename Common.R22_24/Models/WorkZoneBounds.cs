@@ -1,13 +1,8 @@
 ﻿using Autodesk.Revit.DB;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Common.R22_24.Models
 {
-    public struct WorkZoneBounds
+    public class WorkZoneBounds
     {
         public WorkZoneBounds(Transform toWorld, double maxStart, double minEnd, double minPerp, double maxPerp, double minZ)
         {

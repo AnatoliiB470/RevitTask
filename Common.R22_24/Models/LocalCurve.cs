@@ -3,7 +3,7 @@ using System;
 
 namespace Common.R22_24.Models
 {
-    public readonly struct LocalCurve
+    public class LocalCurve
     {
         public Curve OriginalCurve { get; }
         public double StartX { get; }

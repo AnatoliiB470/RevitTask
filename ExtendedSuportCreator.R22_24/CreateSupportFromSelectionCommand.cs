@@ -13,7 +13,6 @@ namespace ExtendedSuportCreator.R22_24
     [Transaction(TransactionMode.Manual)]
     public class CreateSupportFromSelectionCommand : IExternalCommand
     {
-        private const string SUPPORT_FAMILY_NAME = "TRAPEZE 1 TIER";
         private const string DEFAULT_LEVEL_NAME = "Level 1";
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
@@ -29,7 +28,6 @@ namespace ExtendedSuportCreator.R22_24
                 if (conduits.Count == 0)
                     return Result.Cancelled;
 
-                FamilySymbol symbol = finder.GetSupportSymbol(SUPPORT_FAMILY_NAME);
                 Level level = finder.GetActiveLevel(DEFAULT_LEVEL_NAME);
 
                 var settingsControl = new SupportSettingsControl(doc);
@@ -63,7 +61,7 @@ namespace ExtendedSuportCreator.R22_24
 
                     try
                     {
-                        placementService.CreateSupportsAlongSegmentedPath(symbol, elementList, level, 
+                        placementService.CreateSupportsAlongSegmentedPath(elementList, level, 
                             stepInFeet, minOffsetFeet, maxOffsetFeet, minWorkZoneInFeet);
                     }
                     catch (Autodesk.Revit.Exceptions.OperationCanceledException)

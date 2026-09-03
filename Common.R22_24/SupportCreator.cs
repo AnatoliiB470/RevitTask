@@ -32,7 +32,7 @@ namespace Common.R22_24
             double maxEdgeOffsetInFeet,
             double rodOffsetInFeet = DEFAULT_ROD_OFFSET_IN_FEET)
         {
-            if (!PrepareAndValidateCurves(supportSymbol, level, elements, out var curves))
+            if (!PrepareAndValidateCurves(level, elements, out var curves))
                 return new List<FamilyInstance>();
 
             XYZ zoneStartPoint = SupportPlacementCalculator.GetWorkZoneStart(
@@ -58,7 +58,7 @@ namespace Common.R22_24
         public FamilyInstance CreateSupport(FamilySymbol supportSymbol, List<Element> elements,
             Level level, double rodOffsetInFeet = DEFAULT_ROD_OFFSET_IN_FEET, XYZ customPoint = null)
         {
-            if (!PrepareAndValidateCurves(supportSymbol, level, elements, out var curves))
+            if (!PrepareAndValidateCurves(level, elements, out var curves))
                 return null;
 
             XYZ centerPoint = SupportPlacementCalculator.GetWorkZoneCenter(curves, out double perpWidth, out _);
@@ -72,7 +72,6 @@ namespace Common.R22_24
         }
 
         public List<FamilyInstance> CreateSupportsAlongSegmentedPath(
-            FamilySymbol supportSymbol,
             List<Element> elements,
             Level level,
             double stepInFeet,
@@ -81,7 +80,7 @@ namespace Common.R22_24
             double minWorkZoneLengthInFeet = MIN_WORK_ZONE_LENGTH_IN_FEET,
             double rodOffsetInFeet = DEFAULT_ROD_OFFSET_IN_FEET)
         {
-            if (!PrepareAndValidateCurves(supportSymbol, level, elements, out var curves))
+            if (!PrepareAndValidateCurves(level, elements, out var curves))
                 return new List<FamilyInstance>();
 
             double conduitRadius = GetFirstConduitRadius(elements);
@@ -92,6 +91,7 @@ namespace Common.R22_24
             if (!packSegments.Any())
                 return new List<FamilyInstance>();
 
+            FamilySymbol trapezeSymbol = GetTrapezeSymbol();
             XYZ perpDir = new XYZ(-dir.Y, dir.X, 0).Normalize();
             var supports = new List<FamilyInstance>();
             double segmentStartDistance = 0;
@@ -108,7 +108,9 @@ namespace Common.R22_24
                         double globalDist = segmentStartDistance + localDist;
                         XYZ placementPoint = zoneStartPoint + (dir * globalDist) + (perpDir * seg.CenterY);
 
-                        supports.Add(CreateSupportAt(supportSymbol, elements, seg.Width, level, rodOffsetInFeet, placementPoint));
+                        FamilyInstance support = CreateSupportAt(trapezeSymbol, elements, seg.Width, level, rodOffsetInFeet, placementPoint);
+
+                        supports.Add(support);
                     }
                 }
 
@@ -116,6 +118,16 @@ namespace Common.R22_24
             }
 
             return supports;
+        }
+
+        public FamilySymbol GetTrapezeSymbol()
+        {
+            FamilySymbol trapezeSymbol = _elementFinder.GetSupportSymbol(CommonConstants.TRAPEZE_FAMILY_NAME);
+
+            ValidateSymbol(trapezeSymbol, nameof(trapezeSymbol));
+            EnsureSymbolIsActive(trapezeSymbol);
+
+            return trapezeSymbol;
         }
 
         private FamilyInstance CreateSupportAt(
@@ -197,22 +209,19 @@ namespace Common.R22_24
             }
         }
 
-        private void ValidatePlacementInputs(FamilySymbol supportSymbol, Level level)
+        private void ValidateSymbol(FamilySymbol symbol, string paramName)
         {
-            if (supportSymbol == null)
-                throw new ArgumentNullException(nameof(supportSymbol), "FamilySymbol is null.");
-
-            if (level == null)
-                throw new ArgumentNullException(nameof(level), "Level is null.");
+            if (symbol == null)
+                throw new ArgumentNullException(paramName);
         }
 
-        private bool PrepareAndValidateCurves(FamilySymbol supportSymbol, Level level,
+        private bool PrepareAndValidateCurves(Level level,
             List<Element> elements, out List<Curve> curves)
         {
             curves = null;
 
-            ValidatePlacementInputs(supportSymbol, level);
-            EnsureSymbolIsActive(supportSymbol);
+            if (level == null)
+                throw new ArgumentNullException(nameof(level), "Level is null.");
 
             if (elements == null || !elements.Any())
                 return false;

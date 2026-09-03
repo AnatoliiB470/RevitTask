@@ -2,6 +2,7 @@
 using Common.R22_24.Models;
 using System;
 using System.Collections.Generic;
+using System.Data.Sql;
 using System.Linq;
 
 namespace Common.R22_24
@@ -142,9 +143,11 @@ namespace Common.R22_24
 
             if (actualEdgeOffset > maxEdgeOffsetInFeet)
             {
+                var formattedEdgeOffset = UnitFormatUtils.Format(new Units(UnitSystem.Imperial), SpecTypeId.Length, actualEdgeOffset, false);
+
                 throw new InvalidOperationException(
-                    $"Calculated edge offset exceeds Max edge offset. " +
-                    $"Decrease the step distance or increase Max edge offset.");
+                        $"Calculated edge offset exceeds Max edge offset. " +
+                        $"Calculated edge offset: {formattedEdgeOffset}");
             }
 
             for (int i = 0; i <= stepCount; i++)

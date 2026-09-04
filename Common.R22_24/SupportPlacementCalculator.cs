@@ -2,7 +2,6 @@
 using Common.R22_24.Models;
 using System;
 using System.Collections.Generic;
-using System.Data.Sql;
 using System.Linq;
 
 namespace Common.R22_24
@@ -121,18 +120,18 @@ namespace Common.R22_24
         {
             var distances = new List<double>();
 
-            double halfLength = totalLength / 2.0;
+            double doubleMinOffset = minEdgeOffsetInFeet * 2;
 
-            if (halfLength >= minEdgeOffsetInFeet && halfLength <= maxEdgeOffsetInFeet)
+            if (totalLength < doubleMinOffset)
+                return distances;
+
+            if (totalLength <= maxEdgeOffsetInFeet)
             {
-                distances.Add(halfLength);
+                distances.Add(totalLength / 2.0);
                 return distances;
             }
 
-            if (halfLength < minEdgeOffsetInFeet)
-                return distances;
-
-            double availableSpan = totalLength - (2 * minEdgeOffsetInFeet);
+            double availableSpan = totalLength - doubleMinOffset;
             int stepCount = (int)Math.Floor(availableSpan / stepInFeet);
 
             if (stepCount == 0)
@@ -144,12 +143,22 @@ namespace Common.R22_24
 
             double actualEdgeOffset = (totalLength - (stepCount * stepInFeet)) / 2.0;
 
-            for (int i = 0; i <= stepCount; i++)
-                distances.Add(actualEdgeOffset + (i * stepInFeet));
+            if (actualEdgeOffset >= minEdgeOffsetInFeet && actualEdgeOffset <= maxEdgeOffsetInFeet)
+            {
+                for (int i = 0; i <= stepCount; i++)
+                    distances.Add(actualEdgeOffset + (i * stepInFeet));
+
+                return distances;
+            }
+
+            int segmentsCount = Math.Max(1, (int)Math.Ceiling(availableSpan / stepInFeet));
+            double spacing = availableSpan / segmentsCount;
+
+            for (int i = 0; i <= segmentsCount; i++)
+                distances.Add(minEdgeOffsetInFeet + (i * spacing));
 
             return distances;
         }
-
         private static WorkZoneBounds ComputeWorkZoneBounds(List<Curve> curves)
         {
             var packContext = new PackContext(curves[0]);
@@ -162,6 +171,145 @@ namespace Common.R22_24
             double minZ = localCurves.Min(c => c.MinZ);
 
             return new WorkZoneBounds(packContext.ToWorld, maxStart, minEnd, minPerp, maxPerp, minZ);
+        }
+
+        public static List<PackSegment> CalculateGlobalSupportSegments(
+            List<Curve> curves,
+            double conduitRadius,
+            double stepInFeet,
+            double minEdgeOffsetInFeet,
+            double maxEdgeOffsetInFeet,
+            out XYZ zoneStartPoint,
+            out XYZ dir)
+        {
+            if (curves == null || curves.Count == 0)
+            {
+                zoneStartPoint = null;
+                dir = XYZ.BasisX;
+                return new List<PackSegment>();
+            }
+
+            var packContext = new PackContext(curves[0]);
+            var localCurves = curves.Select(c => new LocalCurve(c, packContext)).ToList();
+            dir = packContext.Dir;
+
+            double globalStart = localCurves.Min(c => c.StartX);
+            double minZ = localCurves.Min(c => c.MinZ);
+
+            XYZ startWorld = packContext.ToWorld.OfPoint(new XYZ(globalStart, 0, 0));
+            zoneStartPoint = new XYZ(startWorld.X, startWorld.Y, minZ - conduitRadius);
+
+            List<double> placementXCoords = CalculateOptimizedPlacementCoords(
+                localCurves, stepInFeet, minEdgeOffsetInFeet, maxEdgeOffsetInFeet);
+
+            XYZ perpDir = XYZ.BasisZ.CrossProduct(dir).Normalize();
+            var segments = new List<PackSegment>();
+
+            foreach (double currentX in placementXCoords)
+            {
+                var activeCurves = localCurves.
+                    Where(c => (c.StartX + minEdgeOffsetInFeet <= currentX)
+                    && (c.EndX - minEdgeOffsetInFeet >= currentX)).
+                    ToList();
+
+                if (!activeCurves.Any()) continue;
+
+                double width = activeCurves.Count > 1
+                    ? activeCurves.Max(c => c.MaxY) - activeCurves.Min(c => c.MinY)
+                    : conduitRadius * 2.0;
+
+                double centerY = (activeCurves.Max(c => c.MaxY) + activeCurves.Min(c => c.MinY)) / 2.0;
+
+                double distFromZoneStart = currentX - globalStart;
+                XYZ point = zoneStartPoint + (dir * distFromZoneStart) + (perpDir * centerY);
+
+                segments.Add(new PackSegment(0, width, centerY, activeCurves.Count, point));
+            }
+
+            return segments;
+        }
+
+        private static List<double> CalculateOptimizedPlacementCoords(
+            List<LocalCurve> localCurves,
+            double stepInFeet,
+            double minOffset,
+            double maxOffset)
+        {
+            var points = new List<double>();
+
+            var startOffsetRanges = new List<(double Min, double Max)>();
+            var endOffsetRanges = new List<(double Min, double Max)>();
+
+            startOffsetRanges = localCurves
+                .Select(c => (Min: c.StartX + minOffset, Max: c.StartX + maxOffset))
+                .OrderBy(w => w.Min)
+                .ToList();
+
+            endOffsetRanges = localCurves
+                .Select(c => (Min: c.EndX - maxOffset, Max: c.EndX - minOffset))
+                .OrderBy(w => w.Min)
+                .ToList();
+
+            List<double> boundaryPoints = new List<double>();
+            boundaryPoints.AddRange(ClusterAndGetOptimalPoints(startOffsetRanges));
+            boundaryPoints.AddRange(ClusterAndGetOptimalPoints(endOffsetRanges));
+
+            var sortedBoundaries = boundaryPoints.Distinct().OrderBy(x => x).ToList();
+
+            for (int i = 0; i < sortedBoundaries.Count; i++)
+            {
+                if (i == 0)
+                {
+                    points.Add(sortedBoundaries[i]);
+                    continue;
+                }
+
+                double prev = sortedBoundaries[i - 1];
+                double curr = sortedBoundaries[i];
+                double span = curr - prev;
+
+                if (span > stepInFeet)
+                {
+                    int steps = (int)Math.Ceiling(span / stepInFeet);
+                    double interval = span / steps;
+
+                    for (int j = 1; j < steps; j++)
+                        points.Add(prev + j * interval);
+                }
+
+                points.Add(curr);
+            }
+
+            return points.Distinct().OrderBy(x => x).ToList();
+        }
+
+        private static List<double> ClusterAndGetOptimalPoints(List<(double Min, double Max)> minMaxRanges)
+        {
+            var resultPoints = new List<double>();
+            if (!minMaxRanges.Any()) return resultPoints;
+
+            double currentMin = minMaxRanges[0].Min;
+            double currentMax = minMaxRanges[0].Max;
+
+            for (int i = 1; i < minMaxRanges.Count; i++)
+            {
+                var w = minMaxRanges[i];
+
+                if (w.Min <= currentMax && w.Max >= currentMin)
+                {
+                    currentMin = Math.Max(currentMin, w.Min);
+                    currentMax = Math.Min(currentMax, w.Max);
+                }
+                else
+                {
+                    resultPoints.Add((currentMin + currentMax) / 2.0);
+                    currentMin = w.Min;
+                    currentMax = w.Max;
+                }
+            }
+
+            resultPoints.Add((currentMin + currentMax) / 2.0);
+            return resultPoints;
         }
     }
 }

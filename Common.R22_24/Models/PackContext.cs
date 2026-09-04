@@ -13,7 +13,7 @@ namespace Common.R22_24.Models
         {
             Origin = baseCurve.GetEndPoint(0);
             Dir = (baseCurve.GetEndPoint(1) - Origin).Normalize();
-            XYZ perp = new XYZ(-Dir.Y, Dir.X, 0).Normalize();
+            XYZ perp = XYZ.BasisZ.CrossProduct(Dir).Normalize();
 
             ToWorld = Transform.Identity;
             ToWorld.Origin = Origin;

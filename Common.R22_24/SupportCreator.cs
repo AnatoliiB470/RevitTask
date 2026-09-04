@@ -72,20 +72,21 @@ namespace Common.R22_24
         }
 
         public List<FamilyInstance> CreateSupportsAlongSegmentedPath(
-            List<Element> elements,
-            Level level,
-            double stepInFeet,
-            double minEdgeOffsetInFeet,
-            double maxEdgeOffsetInFeet,
-            double rodOffsetInFeet = DEFAULT_ROD_OFFSET_IN_FEET)
+    List<Element> elements,
+    Level level,
+    double stepInFeet,
+    double minEdgeOffsetInFeet,
+    double maxEdgeOffsetInFeet,
+    double rodOffsetInFeet = DEFAULT_ROD_OFFSET_IN_FEET)
         {
             if (!PrepareAndValidateCurves(level, elements, out var curves))
                 return new List<FamilyInstance>();
 
             double conduitRadius = GetFirstConduitRadius(elements);
 
-            List<PackSegment> packSegments = SupportPlacementCalculator.BuildPackSegments(
-                curves, conduitRadius, _doc.Application.ShortCurveTolerance, out XYZ zoneStartPoint, out XYZ dir);
+            List<PackSegment> packSegments = SupportPlacementCalculator.CalculateGlobalSupportSegments(
+                curves, conduitRadius, stepInFeet, minEdgeOffsetInFeet,
+                maxEdgeOffsetInFeet, out XYZ zoneStartPoint, out XYZ dir);
 
             if (!packSegments.Any())
                 return new List<FamilyInstance>();
@@ -99,28 +100,16 @@ namespace Common.R22_24
             if (packSegments.Any(seg => seg.ElementCount == 1))
                 jHookSymbol = GetJHookSymbol(conduitRadius * 2.0);
 
-            XYZ perpDir = new XYZ(-dir.Y, dir.X, 0).Normalize();
             var supports = new List<FamilyInstance>();
-            double segmentStartDistance = 0;
 
             foreach (var seg in packSegments)
             {
-                List<double> localDistances = SupportPlacementCalculator.CalculateSymmetricPlacementDistances(
-                    seg.Length, stepInFeet, minEdgeOffsetInFeet, maxEdgeOffsetInFeet);
+                FamilySymbol symbolToUse = seg.ElementCount == 1 ? jHookSymbol : trapezeSymbol;
 
-                foreach (double localDist in localDistances)
-                {
-                    double globalDist = segmentStartDistance + localDist;
-                    XYZ placementPoint = zoneStartPoint + (dir * globalDist) + (perpDir * seg.CenterY);
+                FamilyInstance support = CreateSupportAt(symbolToUse, elements, seg.Width,
+                    level, rodOffsetInFeet, seg.Position);
 
-                    FamilyInstance support = seg.ElementCount == 1
-                        ? CreateSupportAt(jHookSymbol, elements, seg.Width, level, rodOffsetInFeet, placementPoint)
-                        : CreateSupportAt(trapezeSymbol, elements, seg.Width, level, rodOffsetInFeet, placementPoint);
-
-                    supports.Add(support);
-                }
-
-                segmentStartDistance += seg.Length;
+                supports.Add(support);
             }
 
             return supports;
@@ -174,7 +163,7 @@ namespace Common.R22_24
         {
             Element firstElement = elements.First();
 
-            Parameter diamParam = firstElement.get_Parameter(BuiltInParameter.RBS_CONDUIT_DIAMETER_PARAM);
+            Parameter diamParam = firstElement.get_Parameter(BuiltInParameter.RBS_CONDUIT_OUTER_DIAM_PARAM);
 
             if (diamParam != null && diamParam.HasValue)
                 return diamParam.AsDouble() * 0.5;

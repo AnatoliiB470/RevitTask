@@ -77,7 +77,6 @@ namespace Common.R22_24
             double stepInFeet,
             double minEdgeOffsetInFeet,
             double maxEdgeOffsetInFeet,
-            double minWorkZoneLengthInFeet = MIN_WORK_ZONE_LENGTH_IN_FEET,
             double rodOffsetInFeet = DEFAULT_ROD_OFFSET_IN_FEET)
         {
             if (!PrepareAndValidateCurves(level, elements, out var curves))
@@ -106,22 +105,19 @@ namespace Common.R22_24
 
             foreach (var seg in packSegments)
             {
-                if (seg.Length > minWorkZoneLengthInFeet)
+                List<double> localDistances = SupportPlacementCalculator.CalculateSymmetricPlacementDistances(
+                    seg.Length, stepInFeet, minEdgeOffsetInFeet, maxEdgeOffsetInFeet);
+
+                foreach (double localDist in localDistances)
                 {
-                    List<double> localDistances = SupportPlacementCalculator.CalculateSymmetricPlacementDistances(
-                        seg.Length, stepInFeet, minEdgeOffsetInFeet, maxEdgeOffsetInFeet);
+                    double globalDist = segmentStartDistance + localDist;
+                    XYZ placementPoint = zoneStartPoint + (dir * globalDist) + (perpDir * seg.CenterY);
 
-                    foreach (double localDist in localDistances)
-                    {
-                        double globalDist = segmentStartDistance + localDist;
-                        XYZ placementPoint = zoneStartPoint + (dir * globalDist) + (perpDir * seg.CenterY);
+                    FamilyInstance support = seg.ElementCount == 1
+                        ? CreateSupportAt(jHookSymbol, elements, seg.Width, level, rodOffsetInFeet, placementPoint)
+                        : CreateSupportAt(trapezeSymbol, elements, seg.Width, level, rodOffsetInFeet, placementPoint);
 
-                        FamilyInstance support = seg.ElementCount == 1 
-                            ? CreateSupportAt(jHookSymbol, elements, seg.Width, level, rodOffsetInFeet, placementPoint)
-                            : CreateSupportAt(trapezeSymbol, elements, seg.Width, level, rodOffsetInFeet, placementPoint);
-
-                        supports.Add(support);
-                    }
+                    supports.Add(support);
                 }
 
                 segmentStartDistance += seg.Length;

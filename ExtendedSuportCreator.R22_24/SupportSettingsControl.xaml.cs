@@ -42,16 +42,9 @@ namespace ExtendedSuportCreator.R22_24
                 return;
             }
 
-            if (!TryParseLength(MinWorkZoneTextBox.Text, out double minWorkZone) || minWorkZone <= 0)
-            {
-                ShowError("Min work zone must be a positive length (e.g. 2' 0\").");
-                return;
-            }
-
             StepInFeet = step;
             MinOffset = minOffset;
             MaxOffset = maxOffset;
-            MinWorkZoneInFeet = minWorkZone;
 
             Window.GetWindow(this).DialogResult = true;
         }
